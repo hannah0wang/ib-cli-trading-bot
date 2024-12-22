@@ -1,2 +1,5 @@
-src/__pycache/
-src/.ipynb_checkpoints/
+src/bot/__pycache/
+src/bot/.ipynb_checkpoints/
+
+src/visualizer/__pycache/
+src/visualizer/.ipynb_checkpoints/
