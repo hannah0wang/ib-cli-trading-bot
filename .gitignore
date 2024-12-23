@@ -3,3 +3,5 @@ src/bot/.ipynb_checkpoints/
 
 src/visualizer/__pycache__/
 src/visualizer/.ipynb_checkpoints/
+
+src/visualizer/components/__pycache__
