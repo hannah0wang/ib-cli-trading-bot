@@ -107,6 +107,35 @@ def fetch_historical_data(ib, symbol, exchange, duration='5 Y', bar_size='1 day'
     }, inplace=True)
     return df
 
+def active_orders(ib, portfolio_df):  
+    def create_order_item(item):  
+        if item.order.orderType == 'STP':  
+            return {  
+                'symbol': item.contract.symbol,  
+                'action': item.order.action,  
+                'qty': item.order.totalQuantity,  
+                'type': 'StopLoss',  
+                'stop_price': item.order.trailStopPrice,  
+            }  
+
+    if item.order.orderType == 'MKT':  
+            return {  
+                'symbol': item.contract.symbol,  
+                'action': item.order.action,  
+                'qty': item.order.totalQuantity,  
+                'type': 'Market'  
+            }  
+    _opened_orders = ib.reqAllOpenOrders()  
+    items_dicts = [create_order_item(item) for item in _opened_orders]  
+    df = pd.DataFrame.from_records(items_dicts)  
+    orders_df = pd.merge(df, portfolio_df, on=['symbol'])  
+    orders_df['dist_avg_cost'] = (orders_df['stop_price'] / orders_df['avg_cost'] - 1) * 100  
+    orders_df['dist_market_price'] = (orders_df['stop_price'] / orders_df['market_price'] - 1) * 100  
+    orders_df = orders_df.loc[:, ['symbol', 'name', 'action', 'qty', 'type', 'stop_price', 'avg_cost',  
+                                  'dist_avg_cost', 'dist_market_price']]  
+    orders_df = orders_df.sort_values(by=['symbol'])  
+    return orders_df
+
 
 with st.container():
     col1, col2 = st.columns([5, 3])
@@ -115,16 +144,21 @@ with st.container():
 
     PositionsTable.show_table(col1, portfolio_df)
     PositionsChart.show_chart(col2, portfolio_df)
+
+    # display open orders
+    col1.subheader("Opened orders")
+    orders_df = active_orders(ib, portfolio_df)
+    OrdersTable.show_table(col1, orders_df)
     
     for index, row in portfolio_df.iterrows():
-        symbol = row['symbol']
-        exchange = row['contract'].primaryExchange
-        # st.write(f"Fetching historical data for {symbol}...")
+        contract = row['contract']
+        symbol = contract.symbol
+        stop_losses = orders_df.loc[(orders_df['type'] == 'StopLoss') & (orders_df['symbol'] == symbol)]['stop_price'].tolist()
         
         # Fetch historical data for each symbol
-        historical_df = fetch_historical_data(ib, symbol, exchange)
-        if not historical_df.empty:
-            st.write(f"Historical data for {symbol}:")
-            st.dataframe(historical_df.head())
+        # historical_df = fetch_historical_data(ib, symbol, exchange)
+        # if not historical_df.empty:
+        #     st.write(f"Historical data for {symbol}:")
+        #     st.dataframe(historical_df.head())
 
         StockChart.show_chart(col2, symbol)
